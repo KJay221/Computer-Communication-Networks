@@ -1,0 +1,6 @@
+*.pptx
+*.docx
+*.txt
+*.vscode
+*.out
+/lab1/lab1_sample_code
