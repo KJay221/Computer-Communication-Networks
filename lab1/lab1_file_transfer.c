@@ -5,7 +5,9 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <errno.h>
 
 void error(const char *msg)
 {
@@ -13,14 +15,14 @@ void error(const char *msg)
     exit(1);
 }
 
-void tcp_send(char *hostname,int port);
+void tcp_send(char *hostname,int port,char *input_filename);
 void tcp_recv(char *hostname,int port);
 void udp_send();
 void udp_recv();
 
 int main(int argc, char *argv[]){
     if(strcmp(argv[1],"tcp") == 0 && strcmp(argv[2],"send") == 0)
-        tcp_send(argv[3],atoi(argv[4]));
+        tcp_send(argv[3],atoi(argv[4]),argv[5]);
     else if(strcmp(argv[1],"tcp") == 0 && strcmp(argv[2],"recv") == 0)
         tcp_recv(argv[3],atoi(argv[4]));
     else if(strcmp(argv[1],"udp") == 0 && strcmp(argv[2],"send") == 0)
@@ -30,7 +32,7 @@ int main(int argc, char *argv[]){
     return 0;
 }
 
-void tcp_send(char *hostname,int port){
+void tcp_send(char *hostname,int port,char *input_filename){
     printf("%s\n","tcp_send");
     //start tcp send
     int sockfd, n;
