@@ -15,8 +15,8 @@ void error(const char *msg){
 }
 
 struct UDP_Package{
+    unsigned long int index;
     char buffer[1024];
-    long long int index;
 };
 
 
@@ -167,24 +167,38 @@ void udp_send(char *hostname,int port,char *input_filename){
     //send data
     FILE *read_ptr;
     read_ptr = fopen(input_filename,"rb");
+    int read_size = 0;
+    struct UDP_Package buffer;
+    int get = 0;
     //get file_size and send to recv
     struct stat st;
     stat(input_filename, &st);
-    int file_size = st.st_size;
-    for(int i=0;i<1000;i++)
-        sendto(sockfd, (char *)&file_size, sizeof(file_size), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
-    
-    char buffer[1024] = {0};
-    int read_size = 0;
+    buffer.index = st.st_size;
+    for(int i=0;i<1;i++)
+        sendto(sockfd, (char *)&buffer, sizeof(buffer), 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+
+    buffer.index=0;
+    //timeout setting
+    struct timeval tv;
+	tv.tv_sec = 0; //timeout sec
+	tv.tv_usec =  1;
+	setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+
     while(1){
         read_size = 0;
-        bzero(buffer,1024);
-        read_size = fread(buffer,sizeof(char),1024,read_ptr);
+        get = 0;
+        bzero(buffer.buffer,1024);
+        read_size = fread(buffer.buffer,sizeof(char),1024,read_ptr);
         if(read_size <= 0)
             break;
-        sendto(sockfd, buffer, read_size, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+        for(int i=0;i<100;i++){
+            sendto(sockfd, (char *)&buffer, sizeof(unsigned long int)+read_size, 0, (struct sockaddr *)&serv_addr, sizeof(serv_addr));
+            if(recvfrom(sockfd,(char *)&get, sizeof(int), 0,NULL,NULL)>0){
+                break;
+            }
+        }
+        buffer.index++;
     }
-
     //close
     close(sockfd);
     fclose(read_ptr);
@@ -213,25 +227,54 @@ void udp_recv(char *hostname,int port){
     //get data
     FILE *output_ptr;
     output_ptr = fopen("test_output.txt","wb");
+    float recv_size = 0;
+    int get = 1;
+    struct UDP_Package buffer;
+    struct sockaddr_in peeraddr;
+    socklen_t peerlen;
+    peerlen = sizeof(peeraddr);
     //check file_size
-    int file_size = 0;
-    for(int i=0;i<1000;i++)
-        recvfrom(sockfd,(char *)&file_size, sizeof(file_size), 0,NULL,NULL);
-    if(file_size <= 0)
-        error("please resend again");
+    float file_size = 0;
+    recvfrom(sockfd,(char *)&buffer, sizeof(buffer), 0,(struct sockaddr *)&peeraddr, &peerlen);
+    file_size = buffer.index;
 
-    int recv_size = 0;
-    unsigned char buffer[1024];
-    while(recv_size < file_size){
-        bzero(buffer,1024);
+    while(1){
+        bzero(buffer.buffer,1024);
+        buffer.index = 0;
         n = 0;
-        n = recvfrom(sockfd, buffer, 1024, 0,NULL,NULL);
-        if(n>0){
-            fwrite(buffer,sizeof(char),n,output_ptr);
-            recv_size+=n;
+        n = recvfrom(sockfd,(char *)&buffer, sizeof(buffer), 0,NULL,NULL);
+        if(buffer.index == 0){
+            n-=sizeof(unsigned long int);
+            if(n>0){
+                fwrite(buffer.buffer,sizeof(char),n,output_ptr);
+                recv_size+=n;
+            }
+            else
+                error("fail to get package");
+            break;
+        }  
+    }
+    bzero(buffer.buffer,1024);
+    n = 0;
+    unsigned long int index = 1;
+    int check = 0;
+    int num = 0;
+    while(recv_size < file_size){
+        n = recvfrom(sockfd,(char *)&buffer, sizeof(buffer), 0,NULL,NULL);
+        if(index == buffer.index){
+            n-=sizeof(unsigned long int);
+            if(n>0){
+                fwrite(buffer.buffer,sizeof(char),n,output_ptr);
+                recv_size+=n;
+                index++;
+                sendto(sockfd, (char *)&get, sizeof(int), 0, (struct sockaddr *)&peeraddr, peerlen);
+            }
+            else
+                error("fail to get package");
         }
-        else
-            error("fail to get package");
+        bzero(buffer.buffer,1024);
+        buffer.index = 0;
+        n = 0;
     }
 
     //close

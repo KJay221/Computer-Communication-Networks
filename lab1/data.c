@@ -14,4 +14,13 @@ int main(){
             fprintf(output_ptr,"\n");
     }
     fclose(output_ptr);
+    output_ptr = fopen("small_data.txt","w");
+    srand(time(NULL));
+    for(long long int i=1;i<5001;i++){
+        data=(rand()%95)+32;
+        fprintf(output_ptr,"%c",data);
+        if(i%50==0)
+            fprintf(output_ptr,"\n");
+    }
+    fclose(output_ptr);
 }
