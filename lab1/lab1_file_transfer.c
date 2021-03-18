@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <time.h>
 
 void error(const char *msg){
     perror(msg);
@@ -68,6 +69,10 @@ void tcp_send(char *hostname,int port,char *input_filename){
     //send file
     FILE *read_ptr;
     read_ptr = fopen(input_filename,"rb");
+    //get file size
+    struct stat st;
+    stat(input_filename, &st);
+    write(sockfd,(char *)&st.st_size,8);
     unsigned char buffer[1024];
     int read_size;
     while(!feof(read_ptr)){
@@ -117,9 +122,19 @@ void tcp_recv(char *hostname,int port){
         error("ERROR on accept");
     
     //get data
+    //start count time
+    clock_t start_time, end_time;
+    start_time = clock();
+
     FILE *output_ptr;
     output_ptr = fopen("test_output.txt","wb");
+    //get data size
+    int data_size = 0;
+    float read_size = 0;
+    read(newsockfd,(char *)&data_size,8);
     unsigned char buffer[1024];
+    int log[4] = {1,1,1,1};
+    double total_time = 0;
     while(1){
         bzero(buffer,1024);
         n = 0;
@@ -127,7 +142,36 @@ void tcp_recv(char *hostname,int port){
         if (n <= 0)
             break;
         fwrite(buffer,sizeof(char),n,output_ptr);
+
+        //log
+        read_size+=n;
+        float percent = read_size/(float)data_size;
+        if(percent >= 0.25 && log[0]){
+            end_time = clock();
+            printf("25%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[0] = 0;
+        }
+        else if(percent >= 0.50 && log[1]){
+            end_time = clock();
+            printf("50%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[1] = 0;
+        }
+        else if(percent >= 0.75 && log[2]){
+            end_time = clock();
+            printf("75%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[2] = 0;
+        }
+        else if(percent >= 1 && log[3]){
+            end_time = clock();
+            total_time = ((double)(end_time-start_time))/CLOCKS_PER_SEC;
+            printf("100%% %fs\n",total_time);
+            log[3] = 0;
+        }
+
     }
+    //print info
+    printf("Total trans time: %fs\n",total_time);
+    printf("file size : %fMB\n",(float)data_size/1000000);
 
     //close
     close(newsockfd);
@@ -257,8 +301,6 @@ void udp_recv(char *hostname,int port){
     bzero(buffer.buffer,1024);
     n = 0;
     unsigned long int index = 1;
-    int check = 0;
-    int num = 0;
     while(recv_size < file_size){
         n = recvfrom(sockfd,(char *)&buffer, sizeof(buffer), 0,NULL,NULL);
         if(index == buffer.index){
