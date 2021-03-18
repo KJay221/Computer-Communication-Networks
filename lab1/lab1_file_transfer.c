@@ -167,7 +167,6 @@ void tcp_recv(char *hostname,int port){
             printf("100%% %fs\n",total_time);
             log[3] = 0;
         }
-
     }
     //print info
     printf("Total trans time: %fs\n",total_time);
@@ -269,6 +268,10 @@ void udp_recv(char *hostname,int port){
         error("ERROR on binding");
     
     //get data
+    //start count time
+    clock_t start_time, end_time;
+    start_time = clock();
+
     FILE *output_ptr;
     output_ptr = fopen("test_output.txt","wb");
     float recv_size = 0;
@@ -281,6 +284,8 @@ void udp_recv(char *hostname,int port){
     float file_size = 0;
     recvfrom(sockfd,(char *)&buffer, sizeof(buffer), 0,(struct sockaddr *)&peeraddr, &peerlen);
     file_size = buffer.index;
+    int log[4] = {1,1,1,1};
+    double total_time = 0;
 
     while(1){
         bzero(buffer.buffer,1024);
@@ -317,7 +322,34 @@ void udp_recv(char *hostname,int port){
         bzero(buffer.buffer,1024);
         buffer.index = 0;
         n = 0;
+
+        //log
+        float percent = recv_size/file_size;
+        if(percent >= 0.25 && log[0]){
+            end_time = clock();
+            printf("25%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[0] = 0;
+        }
+        else if(percent >= 0.50 && log[1]){
+            end_time = clock();
+            printf("50%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[1] = 0;
+        }
+        else if(percent >= 0.75 && log[2]){
+            end_time = clock();
+            printf("75%% %fs\n",((double)(end_time-start_time))/CLOCKS_PER_SEC);
+            log[2] = 0;
+        }
+        else if(percent >= 1 && log[3]){
+            end_time = clock();
+            total_time = ((double)(end_time-start_time))/CLOCKS_PER_SEC;
+            printf("100%% %fs\n",total_time);
+            log[3] = 0;
+        }
     }
+    //print info
+    printf("Total trans time: %fs\n",total_time);
+    printf("file size : %fMB\n",file_size/1000000);
 
     //close
     close(sockfd);
