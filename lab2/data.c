@@ -4,10 +4,10 @@
 
 int main(){
     FILE *output_ptr;
-    output_ptr = fopen("data.txt","w");
+    output_ptr = fopen("test_input.txt","w");
     char data;
     srand(time(NULL));
-    for(long long int i=1;i<2001;i++){
+    for(long long int i=1;i<10001;i++){
         data=(rand()%95)+32;
         fprintf(output_ptr,"%c",data);
         if(i%50==0)

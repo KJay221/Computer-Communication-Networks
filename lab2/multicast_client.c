@@ -8,12 +8,10 @@
  
 struct sockaddr_in localSock;
 struct ip_mreq group;
-int sd;
-int datalen;
-char databuf[8];
  
 int main(int argc, char *argv[])
 {
+	int sd;
 	sd = socket(AF_INET, SOCK_DGRAM, 0);
 	if(sd < 0){
 		perror("Opening datagram socket error");
@@ -59,15 +57,35 @@ int main(int argc, char *argv[])
 
 
 	//read msg
-	datalen = sizeof(databuf);
-	if(recvfrom(sd, databuf, 8, 0, NULL, NULL) < 0){
-		perror("Reading datagram message error");
-		close(sd);
-		exit(1);
+	FILE *output_ptr;
+	char* output_filename;
+	output_filename = argc != 2?"text_output.txt":argv[1];
+    output_ptr = fopen(output_filename,"wb");
+	char databuf[1024];
+	int n = -1,file_size = 0,msg_size = 0;
+	while(n < file_size){
+		bzero(databuf,1024);
+		msg_size = recvfrom(sd, databuf, 1024, 0, NULL, NULL);
+		if(msg_size < 0){
+			perror("Reading datagram message error");
+			close(sd);
+			exit(1);
+		}
+		else{
+			if(n == -1){
+				n = 0;
+				file_size = atoi(databuf);
+			}
+			else{
+				fwrite(databuf,sizeof(char),msg_size,output_ptr);	
+				n+=msg_size;
+			}
+		}
 	}
-	else{
-		printf("Reading datagram message...OK.\n");
-		printf("The message from multicast server is: %s\n", databuf);
-	}
+	printf("Reading datagram message...OK.\n");
+	printf("receive file size: %dkb\n",n/1000);
+	fclose(output_ptr);
+	
+
 	return 0;
 }
