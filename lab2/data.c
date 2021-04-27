@@ -4,7 +4,7 @@
 
 int main(){
     FILE *output_ptr;
-    output_ptr = fopen("test_input.txt","w");
+    output_ptr = fopen("input.txt","w");
     char data;
     srand(time(NULL));
     for(long long int i=1;i<10001;i++){

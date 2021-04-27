@@ -11,7 +11,7 @@
 struct in_addr localInterface;
 struct sockaddr_in groupSock;
 
-int main (int argc, char *argv[ ])
+int main (int argc, char *argv[])
 {
 	int sd;
 	sd = socket(AF_INET, SOCK_DGRAM, 0);
